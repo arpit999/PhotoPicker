@@ -1,6 +1,7 @@
 package com.example.photopicker
 
-import android.content.Context
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -8,16 +9,31 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.example.photopicker.ui.theme.PhotoPickerTheme
 
 class MainActivity : ComponentActivity() {
@@ -25,28 +41,46 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val pickMedia = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-            // Callback is invoked after the user selects a media item or closes the
-            // photo picker.
-            if (uri != null) {
-                Log.d("PhotoPicker", "Selected URI: $uri")
-            } else {
-                Log.d("PhotoPicker", "No media selected")
+        var singleUri by mutableStateOf(Uri.EMPTY)
+        val uriList by mutableStateOf(emptyList<Uri>())
+
+        val pickMedia =
+            registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+                // Callback is invoked after the user selects a media item or closes the
+                // photo picker.
+                if (uri != null) {
+                    Log.d("PhotoPicker", "Selected URI: $uri")
+                    val imageBitmap =
+                        applicationContext.contentResolver.openInputStream(uri).use { data ->
+                            BitmapFactory.decodeStream(data)
+                        }.asImageBitmap()
+                    singleUri = uri
+                } else {
+                    Log.d("PhotoPicker", "No media selected")
+                }
             }
-        }
+
 
         setContent {
             PhotoPickerTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
 
+                    val context = LocalContext.current
+
                     PhotoPickerContent(
-                        onSingleImageClick = {
+                        singleImageSelection = {
                             // Launch the photo picker and let the user choose only images.
                             pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                         },
                         singleImageContent = {
+                            AsyncImage(
+                                model = singleUri,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxWidth(),
+                                contentScale = ContentScale.Fit
+                            )
                         },
-                        onMultiImageClick = {},
+                        multiImageSelection = {},
                         multiImageContent = {},
                         modifier = Modifier.padding(innerPadding)
                     )
@@ -80,20 +114,30 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun PhotoPickerContent(
-    onSingleImageClick: () -> Unit,
+    singleImageSelection: () -> Unit,
+    multiImageSelection: () -> Unit,
     singleImageContent: @Composable () -> Unit,
-    onMultiImageClick: () -> Unit,
     multiImageContent: @Composable () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier) {
-        Button(onClick = onSingleImageClick) {
-            Text(text = "Single Image")
+
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Button(onClick = singleImageSelection) {
+                Text(text = "Single Image")
+            }
+            Button(onClick = multiImageSelection) {
+                Text(text = "Multiple Image")
+            }
         }
 
-        Button(onClick = onMultiImageClick) {
-            Text(text = "Multiple Image")
-        }
+        singleImageContent()
+
     }
 }
 
@@ -102,9 +146,9 @@ fun PhotoPickerContent(
 fun GreetingPreview() {
     PhotoPickerTheme {
         PhotoPickerContent(
-            onSingleImageClick = { /*TODO*/ },
+            singleImageSelection = { /*TODO*/ },
             singleImageContent = { /*TODO*/ },
-            onMultiImageClick = { /*TODO*/ },
+            multiImageSelection = { /*TODO*/ },
             multiImageContent = { /*TODO*/ })
     }
 }
