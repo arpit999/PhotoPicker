@@ -9,28 +9,24 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -65,23 +61,13 @@ class MainActivity : ComponentActivity() {
             PhotoPickerTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
 
-                    val context = LocalContext.current
-
                     PhotoPickerContent(
                         singleImageSelection = {
                             // Launch the photo picker and let the user choose only images.
                             pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                         },
-                        singleImageContent = {
-                            AsyncImage(
-                                model = singleUri,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxWidth(),
-                                contentScale = ContentScale.Fit
-                            )
-                        },
                         multiImageSelection = {},
-                        multiImageContent = {},
+                        displayImageList = { ImageList(singleUri, uriList) },
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -113,11 +99,32 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+fun ImageList(singleUri: Uri, uriList: List<Uri>, modifier: Modifier = Modifier) {
+    LazyColumn(Modifier.fillMaxSize()) {
+        item {
+            AsyncImage(
+                model = singleUri,
+                contentDescription = null,
+                modifier = Modifier.fillMaxWidth(),
+                contentScale = ContentScale.FillWidth
+            )
+        }
+        items(uriList) {
+            AsyncImage(
+                model = singleUri,
+                contentDescription = null,
+                modifier = Modifier.fillMaxWidth(),
+                contentScale = ContentScale.Fit
+            )
+        }
+    }
+}
+
+@Composable
 fun PhotoPickerContent(
     singleImageSelection: () -> Unit,
     multiImageSelection: () -> Unit,
-    singleImageContent: @Composable () -> Unit,
-    multiImageContent: @Composable () -> Unit,
+    displayImageList: @Composable () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier) {
@@ -136,7 +143,7 @@ fun PhotoPickerContent(
             }
         }
 
-        singleImageContent()
+        displayImageList()
 
     }
 }
@@ -147,8 +154,7 @@ fun GreetingPreview() {
     PhotoPickerTheme {
         PhotoPickerContent(
             singleImageSelection = { /*TODO*/ },
-            singleImageContent = { /*TODO*/ },
             multiImageSelection = { /*TODO*/ },
-            multiImageContent = { /*TODO*/ })
+            displayImageList = { /*TODO*/ })
     }
 }
